@@ -1,0 +1,13 @@
+# Google Sheets設定
+SPREADSHEET_ID=1lSBogD5N-kqphr0Vc7aLKM2hhfwqliHpemjvWgIssOs
+SHEET_NAME=8月シフト
+
+# Discord設定
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp
+
+# 名前対応表ファイル
+NAME_MAPPING_FILE=name_mapping.csv
+
+# 実行時間設定
+NOTIFICATION_HOUR=10
+NOTIFICATION_MINUTE=30
