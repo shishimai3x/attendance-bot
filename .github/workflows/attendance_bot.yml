@@ -1,4 +1,4 @@
-name: 勤怠お知らせBot
+name: 勤怠お知らせBot（個人認証版）
 
 on:
   schedule:
@@ -24,10 +24,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib pandas python-dotenv requests
     
-    - name: Run attendance bot
+    - name: Run attendance bot (OAuth)
       env:
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
         SHEET_NAME: ${{ secrets.SHEET_NAME }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
       run: |
-        python attendance_bot_github.py
+        python attendance_bot_oauth.py
