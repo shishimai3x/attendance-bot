@@ -350,29 +350,33 @@ class AttendanceBotClean:
         if attendance_data['onsite']:
             text_lines.append("### 🏢 出社")
             text_lines.append("```")
+            # 最長の名前を取得して時間の開始位置を決定
+            max_name_length = max(len(person['name']) for person in attendance_data['onsite'])
             for person in attendance_data['onsite']:
                 name = person['name']
                 time = self.format_time(person['time'])
-                # 名前を左寄せ、時間を右寄せで整列
-                text_lines.append(f"  {name:<12} {time}")
+                # 名前の後に適切な空白を追加して時間を揃える
+                padding = " " * (max_name_length - len(name) + 2)
+                text_lines.append(f"  {name}{padding}{time}")
             text_lines.append("```")
-            text_lines.append("")
         
         # リモート
         if attendance_data['remote']:
             text_lines.append("### 🏠 リモート")
             text_lines.append("```")
+            # 最長の名前を取得して時間の開始位置を決定
+            max_name_length = max(len(person['name']) for person in attendance_data['remote'])
             for person in attendance_data['remote']:
                 name = person['name']
                 time = self.format_time(person['time'])
-                # 名前を左寄せ、時間を右寄せで整列
-                text_lines.append(f"  {name:<12} {time}")
+                # 名前の後に適切な空白を追加して時間を揃える
+                padding = " " * (max_name_length - len(name) + 2)
+                text_lines.append(f"  {name}{padding}{time}")
             text_lines.append("```")
-            text_lines.append("")
         
         # 合計
         total = len(attendance_data['onsite']) + len(attendance_data['remote'])
-        text_lines.append(f"---")
+        text_lines.append("---")
         text_lines.append(f"**合計: {total}人**")
         
         return "\n".join(text_lines)
