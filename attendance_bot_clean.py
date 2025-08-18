@@ -62,16 +62,17 @@ class AttendanceBotClean:
             print(f"GOOGLE_OAUTH_TOKEN環境変数: {'設定済み' if os.getenv('GOOGLE_OAUTH_TOKEN') else '未設定'}")
             
             # GitHub Actions環境では事前生成されたトークンを使用
-            if os.getenv('GITHUB_ACTIONS'):
+            if os.getenv('GITHUB_ACTIONS') or os.getenv('CI'):
                 print("GitHub Actions環境を検出")
                 # GitHub Actions環境
                 token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
-                if token_data:
+                if token_data and len(token_data) > 100:  # トークンが十分な長さがあるかチェック
                     print("事前生成トークンを使用")
                     import base64
                     token_bytes = base64.b64decode(token_data)
                     creds = pickle.loads(token_bytes)
                 else:
+                    print(f"トークンデータ: {token_data[:50] if token_data else 'None'}...")
                     raise Exception("GOOGLE_OAUTH_TOKEN環境変数が設定されていません")
             else:
                 print("ローカル環境を検出")
