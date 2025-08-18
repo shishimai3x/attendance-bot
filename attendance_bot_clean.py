@@ -393,7 +393,6 @@ class AttendanceBotClean:
             return ""
         
         time_str = str(time_str).strip()
-        import re
         
         # 1. まず記号を統一
         time_str = time_str.replace('：', ':').replace('～', '-').replace('~', '-')
