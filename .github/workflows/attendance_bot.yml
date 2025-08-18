@@ -24,6 +24,24 @@ jobs:
         python -m pip install --upgrade pip
         pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib pandas python-dotenv requests
     
+    - name: Check environment variables
+      run: |
+        echo "=== 環境変数チェック ==="
+        echo "GITHUB_ACTIONS: $GITHUB_ACTIONS"
+        echo "CI: $CI"
+        echo "SPREADSHEET_ID: ${SPREADSHEET_ID:0:10}..."
+        echo "SHEET_NAME: $SHEET_NAME"
+        echo "DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:0:30}..."
+        echo "GOOGLE_OAUTH_CLIENT_CONFIG: ${GOOGLE_OAUTH_CLIENT_CONFIG:0:20}..."
+        echo "GOOGLE_OAUTH_TOKEN: ${GOOGLE_OAUTH_TOKEN:0:20}..."
+        echo "=========================="
+      env:
+        SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        SHEET_NAME: ${{ secrets.SHEET_NAME }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
+        GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+
     - name: Run attendance bot (OAuth)
       env:
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
@@ -32,7 +50,4 @@ jobs:
         GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
         GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
       run: |
-        echo "環境変数チェック:"
-        echo "GITHUB_ACTIONS: $GITHUB_ACTIONS"
-        echo "GOOGLE_OAUTH_TOKEN: ${GOOGLE_OAUTH_TOKEN:0:20}..."
         python attendance_bot_clean.py

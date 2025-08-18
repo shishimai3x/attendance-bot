@@ -59,10 +59,14 @@ class AttendanceBotClean:
             
             # デバッグ情報
             print(f"GITHUB_ACTIONS環境変数: {os.getenv('GITHUB_ACTIONS')}")
+            print(f"CI環境変数: {os.getenv('CI')}")
+            print(f"RUNNER_OS環境変数: {os.getenv('RUNNER_OS')}")
             print(f"GOOGLE_OAUTH_TOKEN環境変数: {'設定済み' if os.getenv('GOOGLE_OAUTH_TOKEN') else '未設定'}")
             
             # GitHub Actions環境では事前生成されたトークンを使用
-            if os.getenv('GITHUB_ACTIONS') or os.getenv('CI'):
+            is_github_actions = bool(os.getenv('GITHUB_ACTIONS') or os.getenv('CI') or os.getenv('RUNNER_OS'))
+            
+            if is_github_actions:
                 print("GitHub Actions環境を検出")
                 # GitHub Actions環境
                 token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
