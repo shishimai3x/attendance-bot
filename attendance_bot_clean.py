@@ -56,23 +56,36 @@ class AttendanceBotClean:
         """Google Sheets API認証"""
         try:
             creds = None
-            if os.path.exists('token.pickle'):
-                with open('token.pickle', 'rb') as token:
-                    creds = pickle.load(token)
             
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
+            # GitHub Actions環境では事前生成されたトークンを使用
+            if os.getenv('GITHUB_ACTIONS'):
+                # GitHub Actions環境
+                token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
+                if token_data:
+                    import base64
+                    token_bytes = base64.b64decode(token_data)
+                    creds = pickle.loads(token_bytes)
                 else:
-                    client_config = json.loads(os.getenv('GOOGLE_OAUTH_CLIENT_CONFIG', '{}'))
-                    if not client_config:
-                        raise Exception("GOOGLE_OAUTH_CLIENT_CONFIG環境変数が設定されていません")
-                    
-                    flow = InstalledAppFlow.from_client_config(client_config, self.SCOPES)
-                    creds = flow.run_local_server(port=0)
+                    raise Exception("GOOGLE_OAUTH_TOKEN環境変数が設定されていません")
+            else:
+                # ローカル環境
+                if os.path.exists('token.pickle'):
+                    with open('token.pickle', 'rb') as token:
+                        creds = pickle.load(token)
                 
-                with open('token.pickle', 'wb') as token:
-                    pickle.dump(creds, token)
+                if not creds or not creds.valid:
+                    if creds and creds.expired and creds.refresh_token:
+                        creds.refresh(Request())
+                    else:
+                        client_config = json.loads(os.getenv('GOOGLE_OAUTH_CLIENT_CONFIG', '{}'))
+                        if not client_config:
+                            raise Exception("GOOGLE_OAUTH_CLIENT_CONFIG環境変数が設定されていません")
+                        
+                        flow = InstalledAppFlow.from_client_config(client_config, self.SCOPES)
+                        creds = flow.run_local_server(port=0)
+                    
+                    with open('token.pickle', 'wb') as token:
+                        pickle.dump(creds, token)
             
             service = build('sheets', 'v4', credentials=creds)
             print("Google Sheets API認証成功")
