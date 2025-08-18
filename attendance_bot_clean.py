@@ -352,7 +352,7 @@ class AttendanceBotClean:
         # 出社
         if attendance_data['onsite']:
             text_lines.append("### 🏢 出社")
-            text_lines.append("```text")
+            text_lines.append("```")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['onsite'])
             for person in attendance_data['onsite']:
@@ -366,7 +366,7 @@ class AttendanceBotClean:
         # リモート
         if attendance_data['remote']:
             text_lines.append("### 🏠 リモート")
-            text_lines.append("```text")
+            text_lines.append("```")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['remote'])
             for person in attendance_data['remote']:
@@ -425,15 +425,22 @@ class AttendanceBotClean:
         time_str = re.sub(r'-(\d{1}):', r'-\1:', time_str)
         
         # 秒を削除（:00:00 → :00）
-        time_str = re.sub(r':(\d{2}):\d{2}', r':\1', time_str)
+        time_str = re.sub(r':(\d{2}):\d{2}$', r':\1', time_str)
+        time_str = re.sub(r':(\d{2}):\d{2}(?!\d)', r':\1', time_str)
         
         return time_str
     
     def send_to_discord(self, text):
         """Discordに送信"""
         try:
+            # DiscordのMarkdownを確実に有効にするためにembedsを使用
             payload = {
-                "content": text
+                "embeds": [
+                    {
+                        "description": text,
+                        "color": 0x00ff00  # 緑色
+                    }
+                ]
             }
             
             response = requests.post(self.discord_webhook_url, json=payload)
