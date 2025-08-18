@@ -343,7 +343,6 @@ class AttendanceBotClean:
         
         text_lines = [
             f"## {today} 本日の勤怠情報 (ざっくりシフトより)",
-            "",
         ]
         
         # 出社
