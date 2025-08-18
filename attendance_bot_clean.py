@@ -315,14 +315,18 @@ class AttendanceBotClean:
                 
                 # データを追加（OFFは無視）
                 if attendance_type == 'onsite':
+                    # 注記がある場合は時間に含める
+                    time_with_note = str(today_cell) if today_cell else ''
                     onsite_people.append({
                         'name': discord_name,
-                        'time': str(today_cell) if today_cell else ''
+                        'time': time_with_note
                     })
                 elif attendance_type == 'remote':
+                    # 注記がある場合は時間に含める
+                    time_with_note = str(today_cell) if today_cell else ''
                     remote_people.append({
                         'name': discord_name,
-                        'time': str(today_cell) if today_cell else ''
+                        'time': time_with_note
                     })
             
             print(f"出社: {len(onsite_people)}人")
@@ -348,7 +352,7 @@ class AttendanceBotClean:
         # 出社
         if attendance_data['onsite']:
             text_lines.append("### 🏢 出社")
-            text_lines.append("```")
+            text_lines.append("```text")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['onsite'])
             for person in attendance_data['onsite']:
@@ -362,7 +366,7 @@ class AttendanceBotClean:
         # リモート
         if attendance_data['remote']:
             text_lines.append("### 🏠 リモート")
-            text_lines.append("```")
+            text_lines.append("```text")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['remote'])
             for person in attendance_data['remote']:
@@ -420,6 +424,9 @@ class AttendanceBotClean:
         # 時間の前ゼロを追加（9:00 → 09:00）
         time_str = re.sub(r'\b(\d{1}):', r'0\1:', time_str)
         time_str = re.sub(r'-(\d{1}):', r'-\1:', time_str)
+        
+        # 秒を削除（:00:00 → :00）
+        time_str = re.sub(r':(\d{2}):\d{2}', r':\1', time_str)
         
         return time_str
     
