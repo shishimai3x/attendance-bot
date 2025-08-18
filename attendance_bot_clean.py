@@ -342,7 +342,7 @@ class AttendanceBotClean:
         today = datetime.now().strftime('%m/%d')
         
         text_lines = [
-            f"## {today} 本日の勤怠情報",
+            f"## {today} 本日の勤怠情報 (ざっくりシフトより)",
             "",
         ]
         
