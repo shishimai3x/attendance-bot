@@ -388,24 +388,21 @@ class AttendanceBotClean:
         
         time_str = str(time_str).strip()
         
-        # 記号を統一
-        time_str = time_str.replace('~', '-').replace('～', '-').replace('：', ':')
-        
-        # 時間パターンを検出して統一
+        # 時間パターンを検出して統一（記号置換前に実行）
         import re
         
         # 9~21 → 09:00-21:00
-        pattern1 = r'(\d{1,2})~(\d{1,2})'
+        pattern1 = r'(\d{1,2})[~～](\d{1,2})'
         if re.search(pattern1, time_str):
             time_str = re.sub(pattern1, r'\1:00-\2:00', time_str)
         
-        # 10-19 → 10:00-19:00
+        # 10-19 → 10:00-19:00（:が含まれていない場合のみ）
         pattern2 = r'(\d{1,2})-(\d{1,2})'
         if re.search(pattern2, time_str) and ':' not in time_str:
             time_str = re.sub(pattern2, r'\1:00-\2:00', time_str)
         
         # 7：30-20 → 07:30-20:00
-        pattern3 = r'(\d{1,2}):(\d{2})-(\d{1,2})'
+        pattern3 = r'(\d{1,2})[：:](\d{2})-(\d{1,2})'
         if re.search(pattern3, time_str):
             time_str = re.sub(pattern3, r'\1:\2-\3:00', time_str)
         
@@ -417,6 +414,13 @@ class AttendanceBotClean:
         # 単一時間の場合は:00を追加
         if re.match(r'^\d{1,2}$', time_str):
             time_str = f"{time_str}:00"
+        
+        # 最後に記号を統一
+        time_str = time_str.replace('：', ':')
+        
+        # 時間の前ゼロを追加（9:00 → 09:00）
+        time_str = re.sub(r'\b(\d{1}):', r'0\1:', time_str)
+        time_str = re.sub(r'-(\d{1}):', r'-\1:', time_str)
         
         return time_str
     
