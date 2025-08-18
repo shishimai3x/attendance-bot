@@ -352,6 +352,7 @@ class AttendanceBotClean:
         # 出社
         if attendance_data['onsite']:
             text_lines.append("### 🏢 出社")
+            text_lines.append("")
             text_lines.append("```")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['onsite'])
@@ -362,10 +363,12 @@ class AttendanceBotClean:
                 padding = " " * (max_name_length - len(name) + 2)
                 text_lines.append(f"  {name}{padding}{time}")
             text_lines.append("```")
+            text_lines.append("")
         
         # リモート
         if attendance_data['remote']:
             text_lines.append("### 🏠 リモート")
+            text_lines.append("")
             text_lines.append("```")
             # 最長の名前を取得して時間の開始位置を決定
             max_name_length = max(len(person['name']) for person in attendance_data['remote'])
@@ -376,6 +379,7 @@ class AttendanceBotClean:
                 padding = " " * (max_name_length - len(name) + 2)
                 text_lines.append(f"  {name}{padding}{time}")
             text_lines.append("```")
+            text_lines.append("")
         
         # 合計
         total = len(attendance_data['onsite']) + len(attendance_data['remote'])
@@ -389,58 +393,42 @@ class AttendanceBotClean:
             return ""
         
         time_str = str(time_str).strip()
-        
-        # 時間パターンを検出して統一（記号置換前に実行）
         import re
         
+        # 1. まず記号を統一
+        time_str = time_str.replace('：', ':').replace('～', '-').replace('~', '-')
+        
+        # 2. 時間パターンを検出して統一
         # 9~21 → 09:00-21:00
-        pattern1 = r'(\d{1,2})[~～](\d{1,2})'
-        if re.search(pattern1, time_str):
+        pattern1 = r'(\d{1,2})[-~～](\d{1,2})'
+        if re.search(pattern1, time_str) and ':' not in time_str:
             time_str = re.sub(pattern1, r'\1:00-\2:00', time_str)
         
-        # 10-19 → 10:00-19:00（:が含まれていない場合のみ）
-        pattern2 = r'(\d{1,2})-(\d{1,2})'
-        if re.search(pattern2, time_str) and ':' not in time_str:
-            time_str = re.sub(pattern2, r'\1:00-\2:00', time_str)
-        
         # 7：30-20 → 07:30-20:00
-        pattern3 = r'(\d{1,2})[：:](\d{2})-(\d{1,2})'
-        if re.search(pattern3, time_str):
-            time_str = re.sub(pattern3, r'\1:\2-\3:00', time_str)
+        pattern2 = r'(\d{1,2})[:：](\d{2})-(\d{1,2})'
+        if re.search(pattern2, time_str):
+            time_str = re.sub(pattern2, r'\1:\2-\3:00', time_str)
         
         # 10-12/20-24 → 10:00-12:00/20:00-24:00
-        pattern4 = r'(\d{1,2})-(\d{1,2})/(\d{1,2})-(\d{1,2})'
-        if re.search(pattern4, time_str):
-            time_str = re.sub(pattern4, r'\1:00-\2:00/\3:00-\4:00', time_str)
+        pattern3 = r'(\d{1,2})-(\d{1,2})/(\d{1,2})-(\d{1,2})'
+        if re.search(pattern3, time_str):
+            time_str = re.sub(pattern3, r'\1:00-\2:00/\3:00-\4:00', time_str)
         
-        # 単一時間の場合は:00を追加
-        if re.match(r'^\d{1,2}$', time_str):
-            time_str = f"{time_str}:00"
-        
-        # 最後に記号を統一
-        time_str = time_str.replace('：', ':')
-        
-        # 時間の前ゼロを追加（9:00 → 09:00）
+        # 3. 時間の前ゼロを追加（9:00 → 09:00）
         time_str = re.sub(r'\b(\d{1}):', r'0\1:', time_str)
         time_str = re.sub(r'-(\d{1}):', r'-\1:', time_str)
         
-        # 秒を削除（:00:00 → :00）
-        time_str = re.sub(r':(\d{2}):\d{2}$', r':\1', time_str)
-        time_str = re.sub(r':(\d{2}):\d{2}(?!\d)', r':\1', time_str)
+        # 4. 秒を完全に削除（:00:00 → :00）
+        time_str = re.sub(r':(\d{2}):\d{2}', r':\1', time_str)
         
         return time_str
     
     def send_to_discord(self, text):
         """Discordに送信"""
         try:
-            # DiscordのMarkdownを確実に有効にするためにembedsを使用
+            # DiscordのMarkdownを確実に有効にする
             payload = {
-                "embeds": [
-                    {
-                        "description": text,
-                        "color": 0x00ff00  # 緑色
-                    }
-                ]
+                "content": text
             }
             
             response = requests.post(self.discord_webhook_url, json=payload)
