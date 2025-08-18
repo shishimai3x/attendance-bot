@@ -59,14 +59,10 @@ class AttendanceBotClean:
             
             # デバッグ情報
             print(f"GITHUB_ACTIONS環境変数: {os.getenv('GITHUB_ACTIONS')}")
-            print(f"CI環境変数: {os.getenv('CI')}")
-            print(f"RUNNER_OS環境変数: {os.getenv('RUNNER_OS')}")
             print(f"GOOGLE_OAUTH_TOKEN環境変数: {'設定済み' if os.getenv('GOOGLE_OAUTH_TOKEN') else '未設定'}")
             
             # GitHub Actions環境では事前生成されたトークンを使用
-            is_github_actions = bool(os.getenv('GITHUB_ACTIONS') or os.getenv('CI') or os.getenv('RUNNER_OS'))
-            
-            if is_github_actions:
+            if os.getenv('GITHUB_ACTIONS') or os.getenv('CI'):
                 print("GitHub Actions環境を検出")
                 # GitHub Actions環境
                 token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
@@ -343,29 +339,30 @@ class AttendanceBotClean:
     
     def generate_text_output(self, attendance_data):
         """テキスト出力を生成（指定された形式）"""
-        today = datetime.now().strftime('%Y年%m月%d日')
+        today = datetime.now().strftime('%m/%d')
         
         text_lines = [
-            f"**{today}の勤怠情報**",
+            f"## {today} 本日の勤怠情報",
             "",
         ]
         
         # 出社
         if attendance_data['onsite']:
-            text_lines.append("**出社**")
+            text_lines.append("### 🏢 出社")
             for person in attendance_data['onsite']:
-                text_lines.append(f"• {person['name']} {person['time']}")
+                text_lines.append(f"• **{person['name']}** {person['time']}")
             text_lines.append("")
         
         # リモート
         if attendance_data['remote']:
-            text_lines.append("**リモート**")
+            text_lines.append("### 🏠 リモート")
             for person in attendance_data['remote']:
-                text_lines.append(f"• {person['name']} {person['time']}")
+                text_lines.append(f"• **{person['name']}** {person['time']}")
             text_lines.append("")
         
         # 合計
         total = len(attendance_data['onsite']) + len(attendance_data['remote'])
+        text_lines.append(f"---")
         text_lines.append(f"**合計: {total}人**")
         
         return "\n".join(text_lines)
