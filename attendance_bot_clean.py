@@ -57,17 +57,24 @@ class AttendanceBotClean:
         try:
             creds = None
             
+            # デバッグ情報
+            print(f"GITHUB_ACTIONS環境変数: {os.getenv('GITHUB_ACTIONS')}")
+            print(f"GOOGLE_OAUTH_TOKEN環境変数: {'設定済み' if os.getenv('GOOGLE_OAUTH_TOKEN') else '未設定'}")
+            
             # GitHub Actions環境では事前生成されたトークンを使用
             if os.getenv('GITHUB_ACTIONS'):
+                print("GitHub Actions環境を検出")
                 # GitHub Actions環境
                 token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
                 if token_data:
+                    print("事前生成トークンを使用")
                     import base64
                     token_bytes = base64.b64decode(token_data)
                     creds = pickle.loads(token_bytes)
                 else:
                     raise Exception("GOOGLE_OAUTH_TOKEN環境変数が設定されていません")
             else:
+                print("ローカル環境を検出")
                 # ローカル環境
                 if os.path.exists('token.pickle'):
                     with open('token.pickle', 'rb') as token:
@@ -81,6 +88,7 @@ class AttendanceBotClean:
                         if not client_config:
                             raise Exception("GOOGLE_OAUTH_CLIENT_CONFIG環境変数が設定されていません")
                         
+                        print("ブラウザ認証を開始")
                         flow = InstalledAppFlow.from_client_config(client_config, self.SCOPES)
                         creds = flow.run_local_server(port=0)
                     
