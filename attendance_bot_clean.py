@@ -379,7 +379,6 @@ class AttendanceBotClean:
         
         # 合計
         total = len(attendance_data['onsite']) + len(attendance_data['remote'])
-        text_lines.append("---")
         text_lines.append(f"**合計: {total}人**")
         
         return "\n".join(text_lines)
