@@ -2,8 +2,8 @@ name: 勤怠お知らせBot（個人認証版）
 
 on:
   schedule:
-    # 毎日10:00に実行（JST）
-    - cron: '0 1 * * *'
+    # 毎日8:00に実行（JST）
+    - cron: '0 23 * * *'
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
