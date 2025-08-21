@@ -33,7 +33,7 @@ class AttendanceBotClean:
             "伊藤正": "伊藤正",
             "林和紀": "林和紀",
             "水口佳代": "水口佳代",
-            "みどり": "水口佳代",
+            "みどり":"水口佳代"
             "石川翔太": "石川翔太",
             "藤川千秋": "藤川千秋",
             "三浦紘太": "三浦紘太",
@@ -55,21 +55,18 @@ class AttendanceBotClean:
     
     def authenticate(self):
         """Google Sheets API認証"""
+        import base64
+        creds = None
         try:
-            creds = None
-            
             # デバッグ情報
             print(f"GITHUB_ACTIONS環境変数: {os.getenv('GITHUB_ACTIONS')}")
             print(f"GOOGLE_OAUTH_TOKEN環境変数: {'設定済み' if os.getenv('GOOGLE_OAUTH_TOKEN') else '未設定'}")
-            
             # GitHub Actions環境では事前生成されたトークンを使用
             if os.getenv('GITHUB_ACTIONS') or os.getenv('CI'):
                 print("GitHub Actions環境を検出")
-                # GitHub Actions環境
                 token_data = os.getenv('GOOGLE_OAUTH_TOKEN')
-                if token_data and len(token_data) > 100:  # トークンが十分な長さがあるかチェック
+                if token_data and len(token_data) > 100:
                     print("事前生成トークンを使用")
-                    import base64
                     token_bytes = base64.b64decode(token_data)
                     creds = pickle.loads(token_bytes)
                 else:
@@ -77,11 +74,9 @@ class AttendanceBotClean:
                     raise Exception("GOOGLE_OAUTH_TOKEN環境変数が設定されていません")
             else:
                 print("ローカル環境を検出")
-                # ローカル環境
                 if os.path.exists('token.pickle'):
                     with open('token.pickle', 'rb') as token:
                         creds = pickle.load(token)
-                
                 if not creds or not creds.valid:
                     if creds and creds.expired and creds.refresh_token:
                         creds.refresh(Request())
@@ -89,18 +84,14 @@ class AttendanceBotClean:
                         client_config = json.loads(os.getenv('GOOGLE_OAUTH_CLIENT_CONFIG', '{}'))
                         if not client_config:
                             raise Exception("GOOGLE_OAUTH_CLIENT_CONFIG環境変数が設定されていません")
-                        
                         print("ブラウザ認証を開始")
                         flow = InstalledAppFlow.from_client_config(client_config, self.SCOPES)
                         creds = flow.run_local_server(port=0)
-                    
                     with open('token.pickle', 'wb') as token:
                         pickle.dump(creds, token)
-            
             service = build('sheets', 'v4', credentials=creds)
             print("Google Sheets API認証成功")
             return service
-            
         except Exception as e:
             print(f"Google Sheets API認証エラー: {e}")
             raise
@@ -108,21 +99,17 @@ class AttendanceBotClean:
     def get_sheet_data(self):
         """シートデータを取得"""
         try:
-            # データ取得
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"{self.sheet_name}!A:ZZ"
             ).execute()
-            
             # 背景色情報も取得
             result_with_colors = self.service.spreadsheets().get(
                 spreadsheetId=self.spreadsheet_id,
                 ranges=f"{self.sheet_name}!A:ZZ",
                 fields='sheets(data(rowData(values(effectiveFormat/backgroundColor))))'
             ).execute()
-            
             return result.get('values', []), result_with_colors
-            
         except Exception as e:
             print(f"シートデータ取得エラー: {e}")
             raise
@@ -196,51 +183,20 @@ class AttendanceBotClean:
         return any(green_conditions)
     
     def classify_attendance(self, cell_value, bg_color):
-        """勤怠を分類"""
-        if not cell_value:
+        """勤怠を分類（OFFでなくセルに何か文字列があれば出社、その内容を表示）"""
+        if not cell_value or str(cell_value).strip() == '':
             return 'off'
-        
         cell_str = str(cell_value).strip()
-        
         # 緑色の背景 → リモート
         if self.is_green_color(bg_color):
             return 'remote'
-        
-        # 時間パターンのチェック（出社）- 先にチェック
-        time_patterns = [
-            r'\d{1,2}:\d{2}-\d{1,2}:\d{2}',  # 9:30-18:30
-            r'\d{1,2}-\d{1,2}',              # 9-18
-            r'\d{1,2}:\d{2}',                # 9:30
-            r'\d{1,2}時',                    # 9時
-            r'\d{1,2}〜\d{1,2}',             # 9〜18
-            r'\d{1,2}～\d{1,2}',             # 9～18
-            r'\d{1,2}:\d{2}~\d{1,2}:\d{2}', # 9:30~18:30
-            r'\d{1,2}:\d{2}～\d{1,2}:\d{2}', # 9:30～18:30
-            r'\d{1,2}：\d{2}-\d{1,2}',       # 7：30-20
-            r'\d{1,2}~',                     # 9~
-            r'\d{1,2}/\d{1,2}',              # 10-12/20-24
-            r'\d{1,2}～\d{1,2}',             # 10～18
-            r'\d{1,2}:\d{2}～\d{1,2}:\d{2}', # 9:30～17:00
-            r'\d{1,2}.\d{1,2}〜\d{1,2}',     # 9.5〜20
-            r'\d{1,2}~\d{1,2}',              # 9~21
-        ]
-        
-        for pattern in time_patterns:
-            if re.search(pattern, cell_str):
-                return 'onsite'
-        
-        # "OFF" または空欄 → 休み（無視）
-        off_patterns = ['OFF', '休', '休み', '休暇', '有給', '欠勤', '']
+        # OFF・休み系ワードが含まれていれば休み
+        off_patterns = ['OFF', '休', '休み', '休暇', '有給', '欠勤']
         for pattern in off_patterns:
             if pattern.upper() in cell_str.upper():
                 return 'off'
-        
-        # 数字のみの場合も出社として扱う
-        if re.match(r'^\d+$', cell_str):
-            return 'onsite'
-        
-        # その他は不明
-        return 'unknown'
+        # それ以外で何か文字列があれば出社
+        return 'onsite'
     
     def to_discord_name(self, sheet_name):
         """シフト表名をDiscord名に変換"""
