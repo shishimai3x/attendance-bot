@@ -7,13 +7,14 @@
 import os
 import json
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import requests
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import pickle
+import pytz
 
 class AttendanceBotClean:
     """シンプル版勤怠Bot"""
@@ -33,7 +34,7 @@ class AttendanceBotClean:
             "伊藤正": "伊藤正",
             "林和紀": "林和紀",
             "水口佳代": "水口佳代",
-            "みどり":"水口佳代",
+            "みどり": "水口佳代",
             "石川翔太": "石川翔太",
             "藤川千秋": "藤川千秋",
             "三浦紘太": "三浦紘太",
@@ -115,33 +116,27 @@ class AttendanceBotClean:
             raise
     
     def find_today_column(self, data):
-        """今日の列を探す"""
-        today = date.today()
-        
+        """今日の列を探す（JST基準）"""
+        jst = pytz.timezone('Asia/Tokyo')
+        today = datetime.now(jst).date()
         # 行2（日付行）をチェック
         if len(data) < 2:
             return None
-        
         date_row = data[1]  # 行2（0ベースなので1）
-        
         # 今日の日付形式
         date_formats = [
             today.strftime('%m/%d'),      # 8/17
             today.strftime('%d'),         # 17
         ]
-        
         for col_idx, cell in enumerate(date_row):
             if not cell:
                 continue
-            
             cell_str = str(cell).strip()
-            
             # 各日付形式でチェック
             for date_format in date_formats:
                 if date_format in cell_str:
                     print(f"今日の列を発見: 列{col_idx+1} ({cell_str})")
                     return col_idx
-        
         print("今日の列が見つかりませんでした")
         return None
     
@@ -299,9 +294,9 @@ class AttendanceBotClean:
             raise
     
     def generate_text_output(self, attendance_data):
-        """テキスト出力を生成（指定された形式）"""
-        today = datetime.now().strftime('%m/%d')
-        
+        """テキスト出力を生成（指定された形式, JST基準の日付）"""
+        jst = pytz.timezone('Asia/Tokyo')
+        today = datetime.now(jst).strftime('%m/%d')
         text_lines = [
             f"## {today} 本日の勤怠情報 (ざっくりシフトより)",
         ]
