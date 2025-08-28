@@ -336,51 +336,49 @@ class AttendanceBotClean:
         return "\n".join(text_lines)
     
     def format_time(self, time_str):
-        """時間表記を統一"""
+        """時:分までの正規化のみ行い、バグが起きないようにする。"""
         if not time_str:
             return ""
-        
-        time_str = str(time_str).strip()
-        
-        # 時間パターンを検出して統一（記号置換前に実行）
+        s = str(time_str).strip()
+        # OFF・休み系ワードなら空文字
+        off_patterns = ['OFF', '休', '休み', '休暇', '有給', '欠勤']
+        for pattern in off_patterns:
+            if pattern.upper() in s.upper():
+                return ""
         import re
-        
-        # 9~21 → 09:00-21:00
-        pattern1 = r'(\d{1,2})[~～](\d{1,2})'
-        if re.search(pattern1, time_str):
-            time_str = re.sub(pattern1, r'\1:00-\2:00', time_str)
-        
-        # 10-19 → 10:00-19:00（:が含まれていない場合のみ）
-        pattern2 = r'(\d{1,2})-(\d{1,2})'
-        if re.search(pattern2, time_str) and ':' not in time_str:
-            time_str = re.sub(pattern2, r'\1:00-\2:00', time_str)
-        
-        # 7：30-20 → 07:30-20:00
-        pattern3 = r'(\d{1,2})[：:](\d{2})-(\d{1,2})'
-        if re.search(pattern3, time_str):
-            time_str = re.sub(pattern3, r'\1:\2-\3:00', time_str)
-        
-        # 10-12/20-24 → 10:00-12:00/20:00-24:00
-        pattern4 = r'(\d{1,2})-(\d{1,2})/(\d{1,2})-(\d{1,2})'
-        if re.search(pattern4, time_str):
-            time_str = re.sub(pattern4, r'\1:00-\2:00/\3:00-\4:00', time_str)
-        
-        # 単一時間の場合は:00を追加
-        if re.match(r'^\d{1,2}$', time_str):
-            time_str = f"{time_str}:00"
-        
-        # 最後に記号を統一
-        time_str = time_str.replace('：', ':')
-        
-        # 時間の前ゼロを追加（9:00 → 09:00）
-        time_str = re.sub(r'\b(\d{1}):', r'0\1:', time_str)
-        time_str = re.sub(r'-(\d{1}):', r'-\1:', time_str)
-        
-        # 秒を削除（:00:00 → :00）
-        time_str = re.sub(r':(\d{2}):\d{2}$', r':\1', time_str)
-        time_str = re.sub(r':(\d{2}):\d{2}(?!\d)', r':\1', time_str)
-        
-        return time_str
+        # 区切り記号を統一
+        s = s.replace('～', '-').replace('~', '-').replace('：', ':')
+        # 秒を含む場合は切り捨て（例: 09:00:00 → 09:00）
+        s = re.sub(r':(\d{2}):\d{2}', r':\1', s)
+        # 9 → 09:00
+        if re.fullmatch(r'\d{1,2}', s):
+            return f"{int(s):02d}:00"
+        # 9:30 → 09:30
+        if re.fullmatch(r'\d{1,2}:\d{2}', s):
+            h, m = s.split(':')
+            return f"{int(h):02d}:{int(m):02d}"
+        # 9-18 → 09:00-18:00
+        m = re.fullmatch(r'(\d{1,2})-(\d{1,2})', s)
+        if m:
+            return f"{int(m.group(1)):02d}:00-{int(m.group(2)):02d}:00"
+        # 9:30-18 → 09:30-18:00
+        m = re.fullmatch(r'(\d{1,2}:\d{2})-(\d{1,2})', s)
+        if m:
+            h1, m1 = m.group(1).split(':')
+            return f"{int(h1):02d}:{int(m1):02d}-{int(m.group(2)):02d}:00"
+        # 9-18:30 → 09:00-18:30
+        m = re.fullmatch(r'(\d{1,2})-(\d{1,2}:\d{2})', s)
+        if m:
+            h2, m2 = m.group(2).split(':')
+            return f"{int(m.group(1)):02d}:00-{int(h2):02d}:{int(m2):02d}"
+        # 9:30-18:30 → 09:30-18:30
+        m = re.fullmatch(r'(\d{1,2}:\d{2})-(\d{1,2}:\d{2})', s)
+        if m:
+            h1, m1 = m.group(1).split(':')
+            h2, m2 = m.group(2).split(':')
+            return f"{int(h1):02d}:{int(m1):02d}-{int(h2):02d}:{int(m2):02d}"
+        # 9:30/13:00-18:00 → 09:30/13:00-18:00（複雑なパターンはそのまま返す）
+        return s
     
     def send_to_discord(self, text):
         """Discordに送信"""
