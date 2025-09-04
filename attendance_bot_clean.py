@@ -24,7 +24,7 @@ class AttendanceBotClean:
     def __init__(self):
         """初期化"""
         self.spreadsheet_id = os.getenv('SPREADSHEET_ID', "1lSBogD5N-kqphr0Vc7aLKM2hhfwqliHpemjvWgIssOs")
-        self.sheet_name = os.getenv('SHEET_NAME', "8月シフト")
+        self.sheet_name = os.getenv('SHEET_NAME', "9月シフト")
         self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL', "https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp")
         
         # 名前対応表
