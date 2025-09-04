@@ -123,10 +123,12 @@ class AttendanceBotClean:
         if len(data) < 2:
             return None
         date_row = data[1]  # 行2（0ベースなので1）
-        # 今日の日付形式
+        # 今日の日付形式（先頭の0なし）
         date_formats = [
-            today.strftime('%m/%d'),      # 8/17
-            today.strftime('%d'),         # 17
+            f"{today.month}/{today.day}",  # 9/4
+            str(today.day),               # 4
+            today.strftime('%m/%d'),      # 09/04
+            today.strftime('%d'),         # 04
         ]
         for col_idx, cell in enumerate(date_row):
             if not cell:
