@@ -26,8 +26,11 @@ class AttendanceBotClean:
         self.spreadsheet_id = os.getenv('SPREADSHEET_ID', "1lSBogD5N-kqphr0Vc7aLKM2hhfwqliHpemjvWgIssOs")
         # 現在の月を取得してシート名を動的に設定
         jst = pytz.timezone('Asia/Tokyo')
-        current_month = datetime.now(jst).month
+        now = datetime.now(jst)
+        current_month = now.month
         self.sheet_name = os.getenv('SHEET_NAME', f"{current_month}月シフト")
+        print(f"現在日時(JST): {now}")
+        print(f"参照するシート名: {self.sheet_name}")
         self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL', "https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp")
         
         # 名前対応表
@@ -103,6 +106,18 @@ class AttendanceBotClean:
     def get_sheet_data(self):
         """シートデータを取得"""
         try:
+            # まずスプレッドシートの情報を取得して利用可能なシートを確認
+            spreadsheet_info = self.service.spreadsheets().get(
+                spreadsheetId=self.spreadsheet_id
+            ).execute()
+            sheets = spreadsheet_info.get('sheets', [])
+            available_sheets = [sheet['properties']['title'] for sheet in sheets]
+            print(f"利用可能なシート一覧: {available_sheets}")
+            
+            # シートが存在しない場合はエラー
+            if self.sheet_name not in available_sheets:
+                raise Exception(f"シート '{self.sheet_name}' が見つかりません。利用可能なシート: {available_sheets}")
+            
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"{self.sheet_name}!A:ZZ"
