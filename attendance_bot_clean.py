@@ -24,7 +24,10 @@ class AttendanceBotClean:
     def __init__(self):
         """初期化"""
         self.spreadsheet_id = os.getenv('SPREADSHEET_ID', "1lSBogD5N-kqphr0Vc7aLKM2hhfwqliHpemjvWgIssOs")
-        self.sheet_name = os.getenv('SHEET_NAME', "9月シフト")
+        # 現在の月を取得してシート名を動的に設定
+        jst = pytz.timezone('Asia/Tokyo')
+        current_month = datetime.now(jst).month
+        self.sheet_name = os.getenv('SHEET_NAME', f"{current_month}月シフト")
         self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL', "https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp")
         
         # 名前対応表
