@@ -2,8 +2,8 @@ name: 勤怠お知らせBot（個人認証版）
 
 on:
   schedule:
-    # 毎日9:00に実行（JST）
-  - cron: '0 23 * * *'
+    # 毎日 JST 9:00 に実行 (UTC 0:00)
+    - cron: '0 0 * * *'
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -30,14 +30,12 @@ jobs:
         echo "GITHUB_ACTIONS: $GITHUB_ACTIONS"
         echo "CI: $CI"
         echo "SPREADSHEET_ID: ${SPREADSHEET_ID:0:10}..."
-        echo "SHEET_NAME: $SHEET_NAME"
         echo "DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:0:30}..."
         echo "GOOGLE_OAUTH_CLIENT_CONFIG: ${GOOGLE_OAUTH_CLIENT_CONFIG:0:20}..."
         echo "GOOGLE_OAUTH_TOKEN: ${GOOGLE_OAUTH_TOKEN:0:20}..."
         echo "=========================="
       env:
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-        SHEET_NAME: ${{ secrets.SHEET_NAME }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
         GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
@@ -45,7 +43,6 @@ jobs:
     - name: Run attendance bot (OAuth)
       env:
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-        SHEET_NAME: ${{ secrets.SHEET_NAME }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
         GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
