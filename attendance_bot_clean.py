@@ -24,14 +24,17 @@ class AttendanceBotClean:
     def __init__(self):
         """初期化"""
         self.spreadsheet_id = os.getenv('SPREADSHEET_ID', "1lSBogD5N-kqphr0Vc7aLKM2hhfwqliHpemjvWgIssOs")
-        # 現在の月を取得してシート名を動的に設定
+        self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL', "https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp")
+        
+        # Google Sheets API認証
+        self.service = self.authenticate()
+        
+        # 今日の日付に基づいてシート名を動的に決定
+        self.sheet_name = self.find_appropriate_sheet()
         jst = pytz.timezone('Asia/Tokyo')
         now = datetime.now(jst)
-        current_month = now.month
-        self.sheet_name = os.getenv('SHEET_NAME', f"{current_month}月シフト")
         print(f"現在日時(JST): {now}")
         print(f"参照するシート名: {self.sheet_name}")
-        self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL', "https://discord.com/api/webhooks/1406517569778880583/uo-MxGcQ4qfNXhPb-FyDksMTmJLsGRqN37ms3ykzQuAAu-D85xn9tJs4m62kQYeEcLGp")
         
         # 名前対応表
         self.name_mapping = {
@@ -103,10 +106,10 @@ class AttendanceBotClean:
             print(f"Google Sheets API認証エラー: {e}")
             raise
     
-    def get_sheet_data(self):
-        """シートデータを取得"""
+    def find_appropriate_sheet(self):
+        """今日の日付に基づいて適切なシートを選択"""
         try:
-            # まずスプレッドシートの情報を取得して利用可能なシートを確認
+            # スプレッドシートの情報を取得して利用可能なシートを確認
             spreadsheet_info = self.service.spreadsheets().get(
                 spreadsheetId=self.spreadsheet_id
             ).execute()
@@ -114,9 +117,63 @@ class AttendanceBotClean:
             available_sheets = [sheet['properties']['title'] for sheet in sheets]
             print(f"利用可能なシート一覧: {available_sheets}")
             
-            # シートが存在しない場合はエラー
-            if self.sheet_name not in available_sheets:
-                raise Exception(f"シート '{self.sheet_name}' が見つかりません。利用可能なシート: {available_sheets}")
+            # 今日の日付を取得（JST基準）
+            jst = pytz.timezone('Asia/Tokyo')
+            today = datetime.now(jst)
+            current_month = today.month
+            current_year = today.year
+            
+            # シート名のパターンを定義（優先順位順）
+            sheet_patterns = [
+                f"{current_year}年{current_month}月シフト",  # 2025年1月シフト
+                f"{current_month}月シフト",                  # 1月シフト
+                f"{current_year}年{current_month}月",        # 2025年1月
+                f"{current_month}月",                        # 1月
+                f"{current_year}年{current_month:02d}月シフト",  # 2025年01月シフト
+                f"{current_month:02d}月シフト",              # 01月シフト
+            ]
+            
+            # 環境変数で指定されたシート名がある場合は優先
+            env_sheet_name = os.getenv('SHEET_NAME')
+            if env_sheet_name and env_sheet_name in available_sheets:
+                print(f"環境変数で指定されたシートを使用: {env_sheet_name}")
+                return env_sheet_name
+            
+            # パターンに一致するシートを探す
+            for pattern in sheet_patterns:
+                if pattern in available_sheets:
+                    print(f"パターン '{pattern}' に一致するシートを発見")
+                    return pattern
+            
+            # 月を含むシートを探す（部分一致）
+            month_keywords = [f"{current_month}月", f"{current_month:02d}月"]
+            for sheet_name in available_sheets:
+                for keyword in month_keywords:
+                    if keyword in sheet_name:
+                        print(f"月キーワード '{keyword}' を含むシートを発見: {sheet_name}")
+                        return sheet_name
+            
+            # デフォルトとして最初のシートを使用
+            if available_sheets:
+                default_sheet = available_sheets[0]
+                print(f"デフォルトシートを使用: {default_sheet}")
+                return default_sheet
+            
+            raise Exception("利用可能なシートが見つかりませんでした")
+            
+        except Exception as e:
+            print(f"シート選択エラー: {e}")
+            # フォールバック: 現在の月のシート名
+            jst = pytz.timezone('Asia/Tokyo')
+            today = datetime.now(jst)
+            fallback_sheet = f"{today.month}月シフト"
+            print(f"フォールバックシートを使用: {fallback_sheet}")
+            return fallback_sheet
+    
+    def get_sheet_data(self):
+        """シートデータを取得"""
+        try:
+            print(f"シート '{self.sheet_name}' のデータを取得中...")
             
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
@@ -137,26 +194,35 @@ class AttendanceBotClean:
         """今日の列を探す（JST基準）"""
         jst = pytz.timezone('Asia/Tokyo')
         today = datetime.now(jst).date()
+        
         # 行2（日付行）をチェック
         if len(data) < 2:
             return None
         date_row = data[1]  # 行2（0ベースなので1）
-        # 今日の日付形式（先頭の0なし）
+        
+        # 今日の日付形式（完全一致を優先）
         date_formats = [
-            f"{today.month}/{today.day}",  # 9/4
-            str(today.day),               # 4
-            today.strftime('%m/%d'),      # 09/04
-            today.strftime('%d'),         # 04
+            f"{today.month}/{today.day}",  # 9/9
+            today.strftime('%m/%d'),      # 09/09
         ]
+        
         for col_idx, cell in enumerate(date_row):
             if not cell:
                 continue
             cell_str = str(cell).strip()
-            # 各日付形式でチェック
+            
+            # 完全一致でチェック（部分文字列マッチを避ける）
             for date_format in date_formats:
-                if date_format in cell_str:
+                if cell_str == date_format:
                     print(f"今日の列を発見: 列{col_idx+1} ({cell_str})")
                     return col_idx
+            
+            # 完全一致で見つからない場合は、より柔軟なマッチング
+            # ただし、部分文字列マッチは避けるため、より具体的なパターンを使用
+            if f"{today.month}/{today.day}" in cell_str and len(cell_str) <= 5:  # 短い文字列のみ
+                print(f"今日の列を発見: 列{col_idx+1} ({cell_str})")
+                return col_idx
+        
         print("今日の列が見つかりませんでした")
         return None
     
