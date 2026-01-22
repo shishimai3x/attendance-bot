@@ -2,54 +2,84 @@ name: 勤怠お知らせBot（個人認証版）
 
 on:
   schedule:
-    # 毎日 JST 8:00 に実行 (UTC 23:00 前日)
+    # 毎日 JST 8:00 相当（GitHub Actions の cron は UTC 解釈）
     - cron: '0 23 * * *'
-  workflow_dispatch:  # 手動実行も可能
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: attendance-bot
+  cancel-in-progress: false
 
 jobs:
   attendance-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       TZ: Asia/Tokyo
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib pandas python-dotenv requests
-    
-    - name: Check environment variables
-      run: |
-        echo "=== 環境変数チェック ==="
-        echo "GITHUB_ACTIONS: $GITHUB_ACTIONS"
-        echo "CI: $CI"
-        echo "SPREADSHEET_ID: ${SPREADSHEET_ID:0:10}..."
-        echo "DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:0:30}..."
-        echo "GOOGLE_OAUTH_CLIENT_CONFIG: ${GOOGLE_OAUTH_CLIENT_CONFIG:0:20}..."
-        echo "GOOGLE_OAUTH_TOKEN: ${GOOGLE_OAUTH_TOKEN:0:20}..."
-        echo "=========================="
-      env:
-        SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
-        GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
+      GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
 
-    - name: Run attendance bot (OAuth)
-      env:
-        SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        GOOGLE_OAUTH_CLIENT_CONFIG: ${{ secrets.GOOGLE_OAUTH_CLIENT_CONFIG }}
-        GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
-        TZ: Asia/Tokyo
-      run: |
-        echo "実行時刻: $(date)"
-        echo "JST時刻: $(TZ=Asia/Tokyo date)"
-        python attendance_bot_clean.py
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Prepare requirements.txt (if missing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f requirements.txt ]; then
+            cat > requirements.txt <<'EOF'
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+pandas
+python-dotenv
+requests
+EOF
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check environment variables (safe)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== 実行環境 ==="
+          echo "UTC: $(date -u)"
+          echo "JST: $(TZ=Asia/Tokyo date)"
+          for k in SPREADSHEET_ID DISCORD_WEBHOOK_URL GOOGLE_OAUTH_CLIENT_CONFIG GOOGLE_OAUTH_TOKEN; do
+            v="${!k:-}"
+            if [ -n "$v" ]; then
+              echo "$k: SET (len=${#v})"
+            else
+              echo "$k: MISSING"
+              exit 1
+            fi
+          done
+          echo "==============="
+
+      - name: Run attendance bot (OAuth)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -u attendance_bot_clean.py
+
